@@ -366,7 +366,7 @@ class TadoCloudAPI:
                 logger.info("Once authenticated, you see a success result here in the log. Polling for authorization...")
                 logger.info("")
                 logger.info("You can also access this information via the web-ui or the /status endpoint:")
-                logger.info(f"    curl http://localhost:4407/status")
+                logger.info("    curl http://localhost:4407/status")
                 logger.info("=" * 70)
 
                 # Step 3: Poll for token

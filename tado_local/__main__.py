@@ -304,7 +304,7 @@ async def run_server(args):
                     for queue in tado_api.zone_event_listeners[:]:
                         try:
                             await queue.put(None)
-                        except Exception:
+                        except Exception as e:
                             logger.error(f"Unexpected error sending closing signal zone queue: {e}")
                             pass
 
