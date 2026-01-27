@@ -19,6 +19,8 @@
 import logging
 import sqlite3
 from typing import Dict, List, Any
+import asyncio
+from .api import TadoLocalAPI
 
 logger = logging.getLogger(__name__)
 
@@ -245,6 +247,64 @@ class TadoCloudSync:
             logger.error(f"Failed to sync zones: {e}", exc_info=True)
             return False
 
+    def sync_zone_states_data(self, zone_states_data: List[Dict[str, Any]], home_id: int, tado_api: TadoLocalAPI) -> bool:
+        """
+        Sync zone states from Tado Cloud API to update humidity.
+
+        The zoneStates_data endpoint provides additional device information including
+        link status, schedule information, geolocation that may not be available via HomeKit.
+
+        Args:
+            zone_states_data: Zone state response from Tado Cloud API
+            home_id: Tado home ID
+            tado_api: TadoLocalAPI instance to retrieve iids and handle events
+
+        Returns:
+            True if successful
+        """
+       
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+
+            humidity_updates = 0
+            
+            zones = zone_states_data.get('zoneStates', {})
+            for zone_id, zone_state in zones.items():
+                settings = zone_state.get('setting', {})
+
+                if not settings or settings.get('type') == 'HOT_WATER':
+                    continue  # Do not process HOT_WATER zones for now
+            
+                sensoDataPoints = zone_state.get('sensorDataPoints', {})
+                humidity = str(sensoDataPoints.get('humidity', {}).get('percentage'))
+                inside_temp = str(sensoDataPoints.get('insideTemperature', {}).get('celsius'))
+                
+                if humidity is not "None":
+                    logger.debug(f"Get all aids for zone: {zone_id}")
+                    # Get all devices of this zone to generate update humidity
+                    cursor.execute(f"SELECT aid FROM devices WHERE tado_zone_id = '{zone_id}'")
+
+                    for device in cursor.fetchall():
+                        # Get iid for this specific device(may be multiple devices in one zone with different iids)
+                        iid = tado_api.get_iid_from_characteristics(device[0], "CurrentRelativeHumidity") if device else None
+
+                        if device and iid:
+                            # Create an update event for humidity
+                            asyncio.create_task(tado_api.handle_change(device[0], iid, {'value': humidity}, source="POLLING"))
+                            logger.debug(f"Humidity change, generate event: ({device[0]}, {iid}) >> value = {humidity}")
+                            humidity_updates += 1
+
+            conn.commit()
+            conn.close()
+
+            logger.info(f"Updated {humidity_updates} devices from zone states data")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to sync zone state data: {e}", exc_info=True)
+            return False
+
     def sync_device_list(self, device_list_data: Dict[str, Any], home_id: int) -> bool:
         """
         Sync device list from Tado Cloud API to update battery states and metadata.
@@ -405,6 +465,15 @@ class TadoCloudSync:
             else:
                 logger.error("Failed to fetch device list")
                 success = False
+
+        # 4. Sync zone_states_data (if provided, no fetching)
+        if zone_states_data is not None:
+            if not self.sync_zone_states_data(zone_states_data=zone_states_data, home_id=home_id, tado_api=cloud_api.tado_api):
+                success = False
+            else:
+                synced_any = True
+        else:
+            logger.error(f"Failed process zone_states_data {zone_states_data}")
 
         if synced_any:
             if success:

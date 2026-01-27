@@ -75,6 +75,7 @@ from datetime import datetime, timedelta
 import sqlite3
 import json
 from .database import CLOUD_SCHEMA
+from .api import TadoLocalAPI
 from .__version__ import __version__
 if TYPE_CHECKING:
     import aiohttp
@@ -205,13 +206,14 @@ class TadoCloudAPI:
     # User-Agent for API identification and communication channel
     USER_AGENT = f"TadoLocal/{__version__} (+https://github.com/ampscm/TadoLocal)"
 
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str, tado_api: TadoLocalAPI):
         """Initialize Tado Cloud API client.
 
         Args:
             db_path: Path to SQLite database for token storage
         """
         self.db_path = db_path
+        self.tado_api = tado_api
         self.access_token: Optional[str] = None
         self.refresh_token: Optional[str] = None
         self.token_expires_at: Optional[float] = None
