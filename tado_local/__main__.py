@@ -181,11 +181,11 @@ async def run_server(args):
 
         logger.info( "*** Tado Local ready! ***")
         logger.info(f"Bridge IP: {bridge_ip}")
-        logger.info(f"API Server: http://{bridge_ip}:{args.port}")
-        logger.info(f"Documentation: http://{bridge_ip}:{args.port}/docs")
-        logger.info(f"Status: http://{bridge_ip}:{args.port}/status")
-        logger.info(f"Thermostats: http://{bridge_ip}:{args.port}/thermostats")
-        logger.info(f"Live Events: http://{bridge_ip}:{args.port}/events")
+        logger.info(f"API Server: http://0.0.0.0:{args.port}")
+        logger.info(f"Documentation: http://0.0.0.0:{args.port}/docs")
+        logger.info(f"Status: http://0.0.0.0:{args.port}/status")
+        logger.info(f"Thermostats: http://0.0.0.0:{args.port}/thermostats")
+        logger.info(f"Live Events: http://0.0.0.0:{args.port}/events")
 
         # Configure uvicorn logging to match our format and prevent duplicates
         if args.syslog:
